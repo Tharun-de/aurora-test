@@ -66,15 +66,34 @@ resource "aws_security_group" "aurora_sg" {
 }
 
 # Aurora Cluster
-resource "aws_rds_cluster" "aurora_cluster" {
-  cluster_identifier      = "aurora-cluster-example"
+resource "aws_rds_cluster" "aurora_serverless_cluster" {
+  cluster_identifier      = "aurora-serverless-cluster"
   engine                  = "aurora-mysql"
-  engine_version          = "5.7.mysql_aurora.2.07.1"
-  database_name           = var.db_name
-  master_username         = var.db_user
-  master_password         = var.db_password
+  engine_version          = "5.7.mysql_aurora.2.07.1" # Make sure this version is compatible with serverless
+  database_name           = "myserverlessdb"
+  master_username         = "customadmin"
+  master_password         = "securepassword!123"
+
   db_subnet_group_name    = aws_db_subnet_group.aurora_subnet_group.name
   vpc_security_group_ids  = [aws_security_group.aurora_sg.id]
 
-  skip_final_snapshot     = true
+  skip_final_snapshot     = true  # This should be false in production for data durability
+
+  # Serverless-specific settings
+  engine_mode             = "serverless"
+  scaling_configuration {
+    auto_pause               = true  # Automatically pause the database when idle
+    min_capacity             = 1     # ACU (Aurora Compute Units)
+    max_capacity             = 2     # Scale up to 2 ACU
+    seconds_until_auto_pause = 300   # Auto-pause after 5 minutes of inactivity
+  }
 }
+
+output "aurora_serverless_cluster_endpoint" {
+  value = aws_rds_cluster.aurora_serverless_cluster.endpoint
+}
+
+output "aurora_serverless_cluster_read_endpoint" {
+  value = aws_rds_cluster.aurora_serverless_cluster.reader_endpoint
+}
+
